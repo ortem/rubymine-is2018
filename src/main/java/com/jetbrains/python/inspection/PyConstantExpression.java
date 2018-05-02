@@ -1,14 +1,6 @@
 package com.jetbrains.python.inspection;
 
-import com.intellij.codeInspection.LocalInspectionToolSession;
-import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.psi.PsiElementVisitor;
-import com.jetbrains.python.inspections.PyInspection;
-import com.jetbrains.python.inspections.PyInspectionVisitor;
-import com.jetbrains.python.psi.*;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
+/*
 public class PyConstantExpression extends PyInspection {
 
     @NotNull
@@ -41,3 +33,4 @@ public class PyConstantExpression extends PyInspection {
         }
     }
 }
+*/
