@@ -11,10 +11,10 @@ class LongCalculateVisitor : PyElementVisitor() {
         private set
 
     fun getValue(): Long? {
-        if (isValid && !valueStack.empty())
-            return valueStack.peek()
+        return if (isValid && !valueStack.empty())
+            valueStack.peek()
         else
-            return null
+            null
     }
 
     private fun calculate(expr: PyExpression): Long? {
@@ -37,6 +37,8 @@ class LongCalculateVisitor : PyElementVisitor() {
     }
 
     override fun visitPyBinaryExpression(node: PyBinaryExpression) {
+        isValid = false
+
         val left = node.leftExpression ?: return
         val op = node.operator ?: return
         val right = node.rightExpression ?: return
@@ -59,9 +61,8 @@ class LongCalculateVisitor : PyElementVisitor() {
                     }
                 } else null
 
-        if (result == null) {
-            isValid = false
-        } else {
+        if (result != null) {
+            isValid = true
             valueStack.push(result)
         }
     }
