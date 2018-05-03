@@ -4,36 +4,46 @@ import com.jetbrains.python.PyTokenTypes
 import com.jetbrains.python.psi.*
 import java.util.*
 
-class LongCalculateVisitor : PyElementVisitor() {
-    private val valueStack: Stack<Long> = Stack()
+class SimpleExpressionCalculateVisitor : PyElementVisitor() {
+    private val simpleExpressionStack: Stack<SimpleExpression> = Stack()
 
     var isValid = true
         private set
 
-    fun getValue(): Long? {
-        return if (isValid && !valueStack.empty())
-            valueStack.peek()
+    fun getValue(): SimpleExpression? {
+        return if (isValid && !simpleExpressionStack.empty())
+            simpleExpressionStack.peek()
         else
             null
     }
 
-    private fun calculate(expr: PyExpression): Long? {
-        val stackSize = valueStack.size
+    private fun calculate(expr: PyExpression): SimpleExpression? {
+        val stackSize = simpleExpressionStack.size
         expr.accept(this)
-        if (valueStack.size > stackSize)
-            return valueStack.pop()
+        if (simpleExpressionStack.size > stackSize)
+            return simpleExpressionStack.pop()
         return null
     }
 
     override fun visitPyNumericLiteralExpression(node: PyNumericLiteralExpression) {
-        valueStack.push(node.longValue)
+        isValid = false
+        val value = node.longValue ?: return
+        simpleExpressionStack.push(SimpleValueExpression(value))
+        isValid = true
     }
 
     override fun visitPyBoolLiteralExpression(node: PyBoolLiteralExpression) {
         if (node.value)
-            valueStack.push(1)
+            simpleExpressionStack.push(SimpleValueExpression(1))
         else
-            valueStack.push(0)
+            simpleExpressionStack.push(SimpleValueExpression(0))
+    }
+
+    override fun visitPyReferenceExpression(node: PyReferenceExpression) {
+        isValid = false
+        val name = node.name ?: return
+        simpleExpressionStack.push(SimpleVariableExpression(name))
+        isValid = true
     }
 
     override fun visitPyBinaryExpression(node: PyBinaryExpression) {
@@ -46,7 +56,7 @@ class LongCalculateVisitor : PyElementVisitor() {
         val leftCalculated = calculate(left)
         val rightCalculated = calculate(right)
 
-        val result: Long? =
+        val result: SimpleExpression? =
                 if (leftCalculated != null && rightCalculated != null) {
                     when (op) {
                         PyTokenTypes.PLUS -> leftCalculated + rightCalculated
@@ -63,7 +73,7 @@ class LongCalculateVisitor : PyElementVisitor() {
 
         if (result != null) {
             isValid = true
-            valueStack.push(result)
+            simpleExpressionStack.push(result)
         }
     }
 

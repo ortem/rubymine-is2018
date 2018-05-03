@@ -18,9 +18,14 @@ class BoolCalculateVisitor : PyElementVisitor() {
     }
 
     private fun calculateLong(expr: PyExpression): Long? {
-        val longCalculateVisitor = LongCalculateVisitor()
-        expr.accept(longCalculateVisitor)
-        return longCalculateVisitor.getValue()
+        val simpleExpressionCalculateVisitor = SimpleExpressionCalculateVisitor()
+        expr.accept(simpleExpressionCalculateVisitor)
+        val result = simpleExpressionCalculateVisitor.getValue()
+
+        return when (result) {
+            is SimpleValueExpression -> result.value
+            else -> null
+        }
     }
 
     private fun calculateBool(expr: PyExpression): Boolean? {
