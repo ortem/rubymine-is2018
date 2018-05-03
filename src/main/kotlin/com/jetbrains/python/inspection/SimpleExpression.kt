@@ -22,19 +22,6 @@ fun SimpleOperator.apply(left: Long, right: Long): Long {
     }
 }
 
-enum class PointType {
-    INCLUDE, EXCLUDE
-}
-
-open class PointSet(elements: List<SimplePointSet>)
-
-interface SimplePointSet
-
-class EndPoint(value: Long, type: PointType = PointType.INCLUDE) : SimplePointSet
-open class Interval(val from: EndPoint, val to: EndPoint) : SimplePointSet
-
-class Universe : Interval(EndPoint(Long.MIN_VALUE, PointType.INCLUDE), EndPoint(Long.MAX_VALUE, PointType.INCLUDE))
-class Empty : SimplePointSet
 
 interface SimpleExpression {
     operator fun plus(other: SimpleExpression): SimpleExpression
@@ -160,7 +147,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 5 == x
     override fun equals(other: SimpleExpression): SimplePointSet {
         return when (other) {
-            is SimpleValueExpression -> if (this.value == other.value) Universe() else Empty()
+            is SimpleValueExpression -> if (this.value == other.value) Universe else Empty
             else -> throw UnsupportedOperationException()
         }
     }
@@ -168,7 +155,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // x != 5
     override fun notEquals(other: SimpleExpression): SimplePointSet {
         return when (other) {
-            is SimpleValueExpression -> if (this.value != other.value) Universe() else Empty()
+            is SimpleValueExpression -> if (this.value != other.value) Universe else Empty
             else -> throw UnsupportedOperationException()
         }
     }
@@ -178,7 +165,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 5 < x + 2
     override fun less(other: SimpleExpression): SimplePointSet {
         return when (other) {
-            is SimpleValueExpression -> if (this.value < other.value) Universe() else Empty()
+            is SimpleValueExpression -> if (this.value < other.value) Universe else Empty
             is SimpleVariableExpression -> other.greater(this)
             is SimpleBinaryExpression -> other.greater(this)
             else -> throw UnsupportedOperationException()
@@ -190,7 +177,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 7 > x + 5
     override fun greater(other: SimpleExpression): SimplePointSet {
         return when (other) {
-            is SimpleValueExpression -> if (this.value > other.value) Universe() else Empty()
+            is SimpleValueExpression -> if (this.value > other.value) Universe else Empty
             is SimpleVariableExpression -> other.less(this)
             is SimpleBinaryExpression -> other.less(this)
             else -> throw UnsupportedOperationException()
@@ -202,7 +189,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 5 <= x + 7
     override fun lessOrEquals(other: SimpleExpression): SimplePointSet {
         return when (other) {
-            is SimpleValueExpression -> if (this.value <= other.value) Universe() else Empty()
+            is SimpleValueExpression -> if (this.value <= other.value) Universe else Empty
             is SimpleVariableExpression -> other.greaterOrEquals(this)
             is SimpleBinaryExpression -> other.greaterOrEquals(this)
             else -> throw UnsupportedOperationException()
@@ -214,7 +201,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 7 >= x + 5
     override fun greaterOrEquals(other: SimpleExpression): SimplePointSet {
         return when (other) {
-            is SimpleValueExpression -> if (this.value >= other.value) Universe() else Empty()
+            is SimpleValueExpression -> if (this.value >= other.value) Universe else Empty
             is SimpleVariableExpression -> other.lessOrEquals(this)
             is SimpleBinaryExpression -> other.lessOrEquals(this)
             else -> throw UnsupportedOperationException()
