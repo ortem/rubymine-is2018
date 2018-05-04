@@ -4,18 +4,25 @@ enum class PointType {
     INCLUDE, EXCLUDE
 }
 
+fun PointType.revert(): PointType {
+    return when (this) {
+        PointType.INCLUDE -> PointType.EXCLUDE
+        PointType.EXCLUDE -> PointType.INCLUDE
+    }
+}
+
 interface PointSet {
     fun intersect(other: PointSet): PointSet
     fun union(other: PointSet): PointSet
-    fun minus(other: PointSet): PointSet
-    fun complement(): PointSet = Universe.minus(this)
+    fun complement(): PointSet
+    fun minus(other: PointSet): PointSet = this.intersect(other.complement())
 
     fun isEmpty(): Boolean
     fun isUniverse(): Boolean
 }
 
 class IntervalUnion(intervals: List<Interval>) : PointSet {
-    val intervals = intervals.sortedBy { it.start.value }
+    val intervals = intervals.filter { !it.isEmpty() }.sortedBy { it.start.value }
 
     override fun isEmpty() = intervals.isEmpty()
 
@@ -65,8 +72,24 @@ class IntervalUnion(intervals: List<Interval>) : PointSet {
         }
     }
 
-    override fun minus(other: PointSet): PointSet {
-        throw UnsupportedOperationException()
+    override fun complement(): PointSet {
+        if (this.isEmpty()) return Universe
+        if (this.isUniverse()) return Empty
+
+        val newIntervals = mutableListOf<Interval>()
+        val firstStart = intervals.first().start
+        newIntervals += Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(firstStart.value, firstStart.type.revert()))
+
+        for (i in 0 until intervals.size - 1) {
+            val start = intervals[i].end
+            val end = intervals[i + 1].start
+            newIntervals += Interval.create(EndPoint(start.value, start.type.revert()), EndPoint(end.value, end.type.revert()))
+        }
+
+        val lastEnd = intervals.last().end
+        newIntervals += Interval.create(EndPoint(lastEnd.value, lastEnd.type.revert()), EndPoint(Long.MAX_VALUE))
+
+        return IntervalUnion(newIntervals)
     }
 }
 
@@ -152,6 +175,9 @@ open class Interval protected constructor(val start: EndPoint, val end: EndPoint
                     else -> return Empty
                 }
             }
+
+            is IntervalUnion -> return other.intersect(this)
+
             else -> throw UnsupportedOperationException()
         }
     }
@@ -165,12 +191,21 @@ open class Interval protected constructor(val start: EndPoint, val end: EndPoint
                     IntervalUnion(listOf(this, other))
                 }
             }
+
+            is IntervalUnion -> return other.union(this)
+
             else -> throw UnsupportedOperationException()
         }
     }
 
-    override fun minus(other: PointSet): PointSet {
-        throw UnsupportedOperationException()
+
+    override fun complement(): PointSet {
+        if (this.isEmpty()) return Universe
+        if (this.isUniverse()) return Empty
+
+        val left = Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(this.start.value, this.start.type.revert()))
+        val right = Interval.create(EndPoint(this.end.value, this.end.type.revert()), EndPoint(Long.MAX_VALUE))
+        return IntervalUnion(listOf(left, right))
     }
 }
 
