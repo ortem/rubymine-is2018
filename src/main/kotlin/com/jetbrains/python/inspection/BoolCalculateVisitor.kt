@@ -5,39 +5,40 @@ import com.jetbrains.python.psi.*
 import java.util.*
 
 class BoolCalculateVisitor : PyElementVisitor() {
-    private val booleanStack: Stack<Boolean> = Stack()
+    private val pointSetStack: Stack<PointSet> = Stack()
 
     var isValid = true
         private set
 
     fun getValue(): Boolean? {
-        if (isValid && !booleanStack.empty())
-            return booleanStack.peek()
+        return if (isValid && !pointSetStack.empty()) {
+            val result = pointSetStack.peek()
+            when (result) {
+                Universe -> true
+                Empty -> false
+                else -> null
+            }
+        }
         else
-            return null
+            null
     }
 
-    private fun calculateLong(expr: PyExpression): Long? {
+    private fun calculateSimpleExpression(expr: PyExpression): SimpleExpression? {
         val simpleExpressionCalculateVisitor = SimpleExpressionCalculateVisitor()
         expr.accept(simpleExpressionCalculateVisitor)
-        val result = simpleExpressionCalculateVisitor.getValue()
-
-        return when (result) {
-            is SimpleValueExpression -> result.value
-            else -> null
-        }
+        return simpleExpressionCalculateVisitor.getValue()
     }
 
-    private fun calculateBool(expr: PyExpression): Boolean? {
-        val stackSize = booleanStack.size
+    private fun calculateBool(expr: PyExpression): PointSet? {
+        val stackSize = pointSetStack.size
         expr.accept(this)
-        if (booleanStack.size > stackSize)
-            return booleanStack.pop()
+        if (pointSetStack.size > stackSize)
+            return pointSetStack.pop()
         return null
     }
 
     override fun visitPyBoolLiteralExpression(node: PyBoolLiteralExpression) {
-        booleanStack.push(node.value)
+        pointSetStack.push(node.value.toPointSet())
     }
 
     private fun isLongToBoolOperator(op: PyElementType): Boolean {
@@ -60,25 +61,20 @@ class BoolCalculateVisitor : PyElementVisitor() {
         val op = node.operator ?: return
         val right = node.rightExpression ?: return
 
-        val result: Boolean?
+        val result: PointSet?
 
         if (isLongToBoolOperator(op)) {
-            val leftCalculated = calculateLong(left)
-            val rightCalculated = calculateLong(right)
+            val leftCalculated = calculateSimpleExpression(left)
+            val rightCalculated = calculateSimpleExpression(right)
             result =
                     if (leftCalculated != null && rightCalculated != null) {
                         when (op) {
-                            PyTokenTypes.EQEQ -> leftCalculated == rightCalculated
-
-                            PyTokenTypes.NE -> leftCalculated != rightCalculated
-
-                            PyTokenTypes.LT -> leftCalculated < rightCalculated
-
-                            PyTokenTypes.GT -> leftCalculated > rightCalculated
-
-                            PyTokenTypes.LE -> leftCalculated <= rightCalculated
-
-                            PyTokenTypes.GE -> leftCalculated >= rightCalculated
+                            PyTokenTypes.EQEQ -> leftCalculated.equals(rightCalculated)
+                            PyTokenTypes.NE -> leftCalculated.notEquals(rightCalculated)
+                            PyTokenTypes.LT -> leftCalculated.less(rightCalculated)
+                            PyTokenTypes.GT -> leftCalculated.greater(rightCalculated)
+                            PyTokenTypes.LE -> leftCalculated.lessOrEquals(rightCalculated)
+                            PyTokenTypes.GE -> leftCalculated.greaterOrEquals(rightCalculated)
 
                             else -> null
                         }
@@ -89,10 +85,8 @@ class BoolCalculateVisitor : PyElementVisitor() {
             result =
                     if (leftCalculated != null && rightCalculated != null) {
                         when (op) {
-                            PyTokenTypes.AND_KEYWORD -> leftCalculated && rightCalculated
-
-                            PyTokenTypes.OR_KEYWORD -> leftCalculated || rightCalculated
-
+                            PyTokenTypes.AND_KEYWORD -> leftCalculated.intersect(rightCalculated)
+                            PyTokenTypes.OR_KEYWORD -> leftCalculated.union(rightCalculated)
                             else -> null
                         }
                     } else null
@@ -100,7 +94,7 @@ class BoolCalculateVisitor : PyElementVisitor() {
 
         if (result != null) {
             isValid = true
-            booleanStack.push(result)
+            pointSetStack.push(result)
         }
     }
 
@@ -113,11 +107,10 @@ class BoolCalculateVisitor : PyElementVisitor() {
         operand.accept(this)
 
         val operandCalculated = calculateBool(operand)
-        val result: Boolean? =
+        val result: PointSet? =
                 if (operandCalculated != null) {
                     when (op) {
-                        PyTokenTypes.NOT_KEYWORD -> !operandCalculated
-
+                        PyTokenTypes.NOT_KEYWORD -> operandCalculated.complement()
                         else -> null
                     }
                 } else null
@@ -125,7 +118,7 @@ class BoolCalculateVisitor : PyElementVisitor() {
 
         if (result != null) {
             isValid = true
-            booleanStack.push(result)
+            pointSetStack.push(result)
         }
     }
 
