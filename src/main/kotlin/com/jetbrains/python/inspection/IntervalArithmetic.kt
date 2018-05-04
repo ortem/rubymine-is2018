@@ -9,9 +9,29 @@ interface PointSet {
     fun union(other: PointSet): PointSet
     fun minus(other: PointSet): PointSet
     fun complement(): PointSet = Universe.minus(this)
+
+    fun isEmpty(): Boolean
+    fun isUniverse(): Boolean
 }
 
-class IntervalUnion(val intervals: List<Interval>) : PointSet {
+class IntervalUnion(intervals: List<Interval>) : PointSet {
+    val intervals = intervals.sortedBy { it.start.value }
+
+    override fun isEmpty() = intervals.isEmpty()
+
+    override fun isUniverse(): Boolean {
+        if (intervals.isEmpty()) return false
+        if (intervals.first().start.value != Long.MIN_VALUE) return false
+        if (intervals.last().end.value != Long.MAX_VALUE) return false
+
+        for (i in 0 until intervals.size - 1) {
+            if (!intervals[i].isIntersectsWith(intervals[i + 1]) && !intervals[i].isStronglyAdjacentWith(intervals[i + 1]))
+                return false
+        }
+
+        return true
+    }
+
     override fun intersect(other: PointSet): PointSet {
         when (other) {
             is Interval -> {
@@ -71,19 +91,21 @@ class EndPoint(val value: Long, val type: PointType = PointType.INCLUDE) {
     }
 }
 
-open class Interval(val start: EndPoint, val end: EndPoint) : PointSet {
-    val isSinglePoint = (start.value == end.value)
+open class Interval protected constructor(val start: EndPoint, val end: EndPoint) : PointSet {
+    val isPoint = (start.value == end.value)
 
-    val isEmpty = (start.value == end.value && (start.type == PointType.EXCLUDE || end.type == PointType.EXCLUDE))
+    override fun isEmpty() =
+            (start.value == end.value && (start.type == PointType.EXCLUDE || end.type == PointType.EXCLUDE))
 
-    val isUniverse = (start.value == Long.MIN_VALUE && end.value == Long.MAX_VALUE)
+    override fun isUniverse() =
+            (start.value == Long.MIN_VALUE && end.value == Long.MAX_VALUE)
 
     companion object {
         fun create(start: EndPoint, end: EndPoint): Interval {
             val interval = Interval(start, end)
             return when {
-                interval.isEmpty -> Empty
-                interval.isUniverse -> Universe
+                interval.isEmpty() -> Empty
+                interval.isUniverse() -> Universe
                 else -> interval
             }
         }
@@ -130,7 +152,7 @@ open class Interval(val start: EndPoint, val end: EndPoint) : PointSet {
                     else -> return Empty
                 }
             }
-            else -> return Empty
+            else -> throw UnsupportedOperationException()
         }
     }
 
@@ -140,10 +162,10 @@ open class Interval(val start: EndPoint, val end: EndPoint) : PointSet {
                 return if (this.isIntersectsWith(other) || this.isStronglyAdjacentWith(other)) {
                     Interval.create(EndPoint.min(this.start, other.start), EndPoint.max(this.end, other.end))
                 } else {
-                    IntervalUnion(listOf(this, other).sortedBy { it.start.value })
+                    IntervalUnion(listOf(this, other))
                 }
             }
-            else -> return Empty
+            else -> throw UnsupportedOperationException()
         }
     }
 

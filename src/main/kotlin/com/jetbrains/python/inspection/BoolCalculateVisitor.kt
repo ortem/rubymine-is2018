@@ -13,9 +13,9 @@ class BoolCalculateVisitor : PyElementVisitor() {
     fun getValue(): Boolean? {
         return if (isValid && !pointSetStack.empty()) {
             val result = pointSetStack.peek()
-            when (result) {
-                Universe -> true
-                Empty -> false
+            when {
+                result.isUniverse() -> true
+                result.isEmpty() -> false
                 else -> null
             }
         }
