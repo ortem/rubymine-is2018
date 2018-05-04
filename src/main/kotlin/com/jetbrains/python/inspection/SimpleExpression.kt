@@ -28,12 +28,12 @@ interface SimpleExpression {
     operator fun minus(other: SimpleExpression): SimpleExpression
     operator fun times(other: SimpleExpression): SimpleExpression
     operator fun div(other: SimpleExpression): SimpleExpression
-    fun equals(other: SimpleExpression): SimplePointSet
-    fun notEquals(other: SimpleExpression): SimplePointSet
-    fun less(other: SimpleExpression): SimplePointSet
-    fun greater(other: SimpleExpression): SimplePointSet
-    fun lessOrEquals(other: SimpleExpression): SimplePointSet
-    fun greaterOrEquals(other: SimpleExpression): SimplePointSet
+    fun equals(other: SimpleExpression): PointSet
+    fun notEquals(other: SimpleExpression): PointSet
+    fun less(other: SimpleExpression): PointSet
+    fun greater(other: SimpleExpression): PointSet
+    fun lessOrEquals(other: SimpleExpression): PointSet
+    fun greaterOrEquals(other: SimpleExpression): PointSet
 }
 
 class SimpleVariableExpression(val variable: String) : SimpleExpression {
@@ -62,23 +62,23 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     }
 
     // x == 5
-    override fun equals(other: SimpleExpression): SimplePointSet {
+    override fun equals(other: SimpleExpression): PointSet {
         return when (other) {
-            is SimpleValueExpression -> EndPoint(other.value)
+            is SimpleValueExpression -> Point(other.value)
             else -> throw UnsupportedOperationException()
         }
     }
 
     // x != 5
-    override fun notEquals(other: SimpleExpression): SimplePointSet {
+    override fun notEquals(other: SimpleExpression): PointSet {
         return when (other) {
-            is SimpleValueExpression -> EndPoint(other.value, PointType.EXCLUDE)
+            is SimpleValueExpression -> Point(other.value).complement()
             else -> throw UnsupportedOperationException()
         }
     }
 
     // x < 5
-    override fun less(other: SimpleExpression): SimplePointSet {
+    override fun less(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> Interval(EndPoint(Long.MIN_VALUE), EndPoint(other.value, PointType.EXCLUDE))
             else -> throw UnsupportedOperationException()
@@ -86,7 +86,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     }
 
     // x > 5
-    override fun greater(other: SimpleExpression): SimplePointSet {
+    override fun greater(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> Interval(EndPoint(other.value, PointType.EXCLUDE), EndPoint(Long.MAX_VALUE))
             else -> throw UnsupportedOperationException()
@@ -94,7 +94,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     }
 
     // x <= 5
-    override fun lessOrEquals(other: SimpleExpression): SimplePointSet {
+    override fun lessOrEquals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> Interval(EndPoint(Long.MIN_VALUE), EndPoint(other.value))
             else -> throw UnsupportedOperationException()
@@ -102,7 +102,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     }
 
     // x >= 5
-    override fun greaterOrEquals(other: SimpleExpression): SimplePointSet {
+    override fun greaterOrEquals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> Interval(EndPoint(other.value), EndPoint(Long.MAX_VALUE))
             else -> throw UnsupportedOperationException()
@@ -145,7 +145,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
 
     // 5 == 5
     // 5 == x
-    override fun equals(other: SimpleExpression): SimplePointSet {
+    override fun equals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value == other.value) Universe else Empty
             else -> throw UnsupportedOperationException()
@@ -153,7 +153,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     }
 
     // x != 5
-    override fun notEquals(other: SimpleExpression): SimplePointSet {
+    override fun notEquals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value != other.value) Universe else Empty
             else -> throw UnsupportedOperationException()
@@ -163,7 +163,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 5 < 7
     // 5 < x
     // 5 < x + 2
-    override fun less(other: SimpleExpression): SimplePointSet {
+    override fun less(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value < other.value) Universe else Empty
             is SimpleVariableExpression -> other.greater(this)
@@ -175,7 +175,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 7 > 5
     // 7 > x
     // 7 > x + 5
-    override fun greater(other: SimpleExpression): SimplePointSet {
+    override fun greater(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value > other.value) Universe else Empty
             is SimpleVariableExpression -> other.less(this)
@@ -187,7 +187,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 5 <= 7
     // 5 <= x
     // 5 <= x + 7
-    override fun lessOrEquals(other: SimpleExpression): SimplePointSet {
+    override fun lessOrEquals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value <= other.value) Universe else Empty
             is SimpleVariableExpression -> other.greaterOrEquals(this)
@@ -199,7 +199,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     // 7 >= 5
     // 7 >= x
     // 7 >= x + 5
-    override fun greaterOrEquals(other: SimpleExpression): SimplePointSet {
+    override fun greaterOrEquals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value >= other.value) Universe else Empty
             is SimpleVariableExpression -> other.lessOrEquals(this)
@@ -228,7 +228,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
 
     // x + 5 == 5
     // 5 == x
-    override fun equals(other: SimpleExpression): SimplePointSet {
+    override fun equals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
@@ -241,7 +241,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
     }
 
     // x != 5
-    override fun notEquals(other: SimpleExpression): SimplePointSet {
+    override fun notEquals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
@@ -254,7 +254,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
     }
 
     // x + 5 < 10
-    override fun less(other: SimpleExpression): SimplePointSet {
+    override fun less(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
@@ -267,7 +267,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
     }
 
     // x + 5 > 10
-    override fun greater(other: SimpleExpression): SimplePointSet {
+    override fun greater(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
@@ -280,7 +280,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
     }
 
     // x + 5 <= 7
-    override fun lessOrEquals(other: SimpleExpression): SimplePointSet {
+    override fun lessOrEquals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
@@ -293,7 +293,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
     }
 
     // x >= 5
-    override fun greaterOrEquals(other: SimpleExpression): SimplePointSet {
+    override fun greaterOrEquals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
