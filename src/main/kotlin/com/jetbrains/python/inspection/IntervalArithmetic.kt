@@ -13,10 +13,12 @@ interface PointSet {
 
 class IntervalUnion(val intervals: List<Interval>) : PointSet {
     override fun intersect(other: PointSet): PointSet {
-        return when (other) {
+        when (other) {
             is Interval -> {
                 val overlapping = intervals.filter { it.isIntersectsWith(other) }
-                IntervalUnion(overlapping.map { it.intersect(other) as Interval })
+                if (overlapping.isEmpty())
+                    return Empty
+                return IntervalUnion(overlapping.map { it.intersect(other) as Interval })
             }
             else -> throw UnsupportedOperationException()
         }
@@ -25,13 +27,17 @@ class IntervalUnion(val intervals: List<Interval>) : PointSet {
     override fun union(other: PointSet): PointSet {
         when (other) {
             is Interval -> {
+                if (intervals.all { !it.isIntersectsWith(other) }) {
+                    return IntervalUnion(intervals + other)
+                }
+
                 val newIntervals = mutableListOf<Interval>()
                 newIntervals.addAll(intervals.takeWhile { !it.isIntersectsWith(other) })
 
                 val firstOverlapping = intervals.first { it.isIntersectsWith(other) }
                 val lastOverlapping = intervals.last { it.isIntersectsWith(other) }
 
-                newIntervals.add(Interval(firstOverlapping.start, lastOverlapping.end))
+                newIntervals.add(Interval.create(firstOverlapping.start, lastOverlapping.end))
                 newIntervals.addAll(intervals.takeLastWhile { !it.isIntersectsWith(other) })
                 return IntervalUnion(newIntervals)
             }
@@ -52,7 +58,6 @@ class EndPoint(val value: Long, val type: PointType = PointType.INCLUDE) {
             return true
         return false
     }
-
     companion object {
         fun max(first: EndPoint, second: EndPoint): EndPoint {
             if (first.toTheLeft(second)) return second
@@ -70,6 +75,19 @@ open class Interval(val start: EndPoint, val end: EndPoint) : PointSet {
     val isSinglePoint = (start.value == end.value)
 
     val isEmpty = (start.value == end.value && (start.type == PointType.EXCLUDE || end.type == PointType.EXCLUDE))
+
+    val isUniverse = (start.value == Long.MIN_VALUE && end.value == Long.MAX_VALUE)
+
+    companion object {
+        fun create(start: EndPoint, end: EndPoint): Interval {
+            val interval = Interval(start, end)
+            return when {
+                interval.isEmpty -> Empty
+                interval.isUniverse -> Universe
+                else -> interval
+            }
+        }
+    }
 
     fun isIntersectsWith(other: Interval) = (this.start.toTheLeft(other.end) && other.start.toTheLeft(this.end))
 
@@ -99,12 +117,18 @@ open class Interval(val start: EndPoint, val end: EndPoint) : PointSet {
     override fun intersect(other: PointSet): PointSet {
         when (other) {
             is Interval -> {
-                if (this.isIntersectsWith(other)) {
-                    val intersection = Interval(EndPoint.max(this.start, other.start), EndPoint.min(this.end, other.end))
-                    if (intersection.isEmpty)
-                        return Empty
-                    return intersection
-                } else return Empty
+                when {
+                    this.isIntersectsWith(other) -> {
+                        return Interval.create(EndPoint.max(this.start, other.start), EndPoint.min(this.end, other.end))
+                    }
+                    this.isStronglyAdjacentWith(other) -> {
+                        return if (this.end.toTheLeft(other.end))
+                            Point(this.end.value)
+                        else
+                            Point(this.start.value)
+                    }
+                    else -> return Empty
+                }
             }
             else -> return Empty
         }
@@ -114,7 +138,7 @@ open class Interval(val start: EndPoint, val end: EndPoint) : PointSet {
         when (other) {
             is Interval -> {
                 return if (this.isIntersectsWith(other) || this.isStronglyAdjacentWith(other)) {
-                    Interval(EndPoint.min(this.start, other.start), EndPoint.max(this.end, other.end))
+                    Interval.create(EndPoint.min(this.start, other.start), EndPoint.max(this.end, other.end))
                 } else {
                     IntervalUnion(listOf(this, other).sortedBy { it.start.value })
                 }

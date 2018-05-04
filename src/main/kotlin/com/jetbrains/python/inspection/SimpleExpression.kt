@@ -80,7 +80,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     // x < 5
     override fun less(other: SimpleExpression): PointSet {
         return when (other) {
-            is SimpleValueExpression -> Interval(EndPoint(Long.MIN_VALUE), EndPoint(other.value, PointType.EXCLUDE))
+            is SimpleValueExpression -> Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(other.value, PointType.EXCLUDE))
             else -> throw UnsupportedOperationException()
         }
     }
@@ -88,7 +88,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     // x > 5
     override fun greater(other: SimpleExpression): PointSet {
         return when (other) {
-            is SimpleValueExpression -> Interval(EndPoint(other.value, PointType.EXCLUDE), EndPoint(Long.MAX_VALUE))
+            is SimpleValueExpression -> Interval.create(EndPoint(other.value, PointType.EXCLUDE), EndPoint(Long.MAX_VALUE))
             else -> throw UnsupportedOperationException()
         }
     }
@@ -96,7 +96,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     // x <= 5
     override fun lessOrEquals(other: SimpleExpression): PointSet {
         return when (other) {
-            is SimpleValueExpression -> Interval(EndPoint(Long.MIN_VALUE), EndPoint(other.value))
+            is SimpleValueExpression -> Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(other.value))
             else -> throw UnsupportedOperationException()
         }
     }
@@ -104,7 +104,7 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
     // x >= 5
     override fun greaterOrEquals(other: SimpleExpression): PointSet {
         return when (other) {
-            is SimpleValueExpression -> Interval(EndPoint(other.value), EndPoint(Long.MAX_VALUE))
+            is SimpleValueExpression -> Interval.create(EndPoint(other.value), EndPoint(Long.MAX_VALUE))
             else -> throw UnsupportedOperationException()
         }
     }
