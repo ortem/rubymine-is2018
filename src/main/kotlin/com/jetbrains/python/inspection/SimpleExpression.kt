@@ -286,20 +286,20 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
                 val variableExpression = SimpleVariableExpression(this.variable)
                 val value = op.revert().apply(other.value, this.value)
                 val valueExpression = SimpleValueExpression(value)
-                return variableExpression.greaterOrEquals(valueExpression)
+                return variableExpression.lessOrEquals(valueExpression)
             }
             else -> throw UnsupportedOperationException()
         }
     }
 
-    // x >= 5
+    // x + 5 >= 7
     override fun greaterOrEquals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
                 val value = op.revert().apply(other.value, this.value)
                 val valueExpression = SimpleValueExpression(value)
-                return variableExpression.lessOrEquals(valueExpression)
+                return variableExpression.greaterOrEquals(valueExpression)
             }
             else -> throw UnsupportedOperationException()
         }
