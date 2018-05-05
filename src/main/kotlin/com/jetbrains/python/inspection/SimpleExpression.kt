@@ -122,6 +122,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     override fun plus(other: SimpleExpression): SimpleExpression {
         return when (other) {
             is SimpleValueExpression -> SimpleValueExpression(this.value + other.value)
+            is SimpleVariableExpression -> SimpleBinaryExpression(other.variable, SimpleOperator.PLUS, value, true)
             else -> throw UnsupportedOperationException()
         }
     }
@@ -130,6 +131,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     override fun minus(other: SimpleExpression): SimpleExpression {
         return when (other) {
             is SimpleValueExpression -> SimpleValueExpression(this.value - other.value)
+            is SimpleVariableExpression -> SimpleBinaryExpression(other.variable, SimpleOperator.MINUS, value, true)
             else -> throw UnsupportedOperationException()
         }
     }
@@ -138,6 +140,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     override fun times(other: SimpleExpression): SimpleExpression {
         return when (other) {
             is SimpleValueExpression -> SimpleValueExpression(this.value * other.value)
+            is SimpleVariableExpression -> SimpleBinaryExpression(other.variable, SimpleOperator.MULT, value, true)
             else -> throw UnsupportedOperationException()
         }
     }
@@ -146,6 +149,7 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     override fun div(other: SimpleExpression): SimpleExpression {
         return when (other) {
             is SimpleValueExpression -> SimpleValueExpression(this.value / other.value)
+            is SimpleVariableExpression -> SimpleBinaryExpression(other.variable, SimpleOperator.DIV, value, true)
             else -> throw UnsupportedOperationException()
         }
     }
@@ -155,14 +159,17 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     override fun equals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value == other.value) Universe else Empty
+            is SimpleVariableExpression -> other.equals(this)
             else -> throw UnsupportedOperationException()
         }
     }
 
-    // x != 5
+    // 5 != 10
+    // 5 != x
     override fun notEquals(other: SimpleExpression): PointSet {
         return when (other) {
             is SimpleValueExpression -> if (this.value != other.value) Universe else Empty
+            is SimpleVariableExpression -> other.notEquals(this)
             else -> throw UnsupportedOperationException()
         }
     }
