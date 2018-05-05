@@ -80,4 +80,25 @@ class SimpleExpressionCalculateVisitor : PyElementVisitor() {
     override fun visitPyParenthesizedExpression(node: PyParenthesizedExpression) {
         node.containedExpression?.accept(this)
     }
+
+    override fun visitPyPrefixExpression(node: PyPrefixExpression) {
+        isValid = false
+
+        val op = node.operator ?: return
+        val operand = node.operand ?: return
+
+        val operandCalculated = calculate(operand)
+
+        val result: SimpleExpression? = operandCalculated?.let {
+            when (op) {
+                PyTokenTypes.MINUS -> -operandCalculated
+                else -> null
+            }
+        }
+
+        if (result != null) {
+            isValid = true
+            simpleExpressionStack.push(result)
+        }
+    }
 }

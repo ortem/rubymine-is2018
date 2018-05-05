@@ -107,13 +107,12 @@ class BoolCalculateVisitor : PyElementVisitor() {
         operand.accept(this)
 
         val operandCalculated = calculateBool(operand)
-        val result: PointSet? =
-                if (operandCalculated != null) {
-                    when (op) {
-                        PyTokenTypes.NOT_KEYWORD -> operandCalculated.complement()
-                        else -> null
-                    }
-                } else null
+        val result: PointSet? = operandCalculated?.let {
+            when (op) {
+                PyTokenTypes.NOT_KEYWORD -> operandCalculated.complement()
+                else -> null
+            }
+        }
 
 
         if (result != null) {

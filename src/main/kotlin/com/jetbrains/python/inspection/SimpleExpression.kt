@@ -4,7 +4,7 @@ enum class SimpleOperator {
     PLUS, MINUS, MULT, DIV
 }
 
-fun SimpleOperator.revert(): SimpleOperator {
+fun SimpleOperator.reverse(): SimpleOperator {
     return when (this) {
         SimpleOperator.PLUS -> SimpleOperator.MINUS
         SimpleOperator.MINUS -> SimpleOperator.PLUS
@@ -13,12 +13,12 @@ fun SimpleOperator.revert(): SimpleOperator {
     }
 }
 
-fun SimpleOperator.apply(left: Long, right: Long): Long {
+fun SimpleOperator.apply(left: Long, right: Long, reversed: Boolean = false): Long {
     return when (this) {
         SimpleOperator.PLUS -> left + right
-        SimpleOperator.MINUS -> left - right
+        SimpleOperator.MINUS -> if (reversed) right - left else left - right
         SimpleOperator.MULT -> left * right
-        SimpleOperator.DIV -> left / right
+        SimpleOperator.DIV -> if (reversed) right / left else left / right
     }
 }
 
@@ -26,6 +26,7 @@ fun SimpleOperator.apply(left: Long, right: Long): Long {
 interface SimpleExpression {
     operator fun plus(other: SimpleExpression): SimpleExpression
     operator fun minus(other: SimpleExpression): SimpleExpression
+    operator fun unaryMinus(): SimpleExpression
     operator fun times(other: SimpleExpression): SimpleExpression
     operator fun div(other: SimpleExpression): SimpleExpression
     fun equals(other: SimpleExpression): PointSet
@@ -37,6 +38,9 @@ interface SimpleExpression {
 }
 
 class SimpleVariableExpression(val variable: String) : SimpleExpression {
+    // -x
+    override fun unaryMinus(): SimpleExpression = SimpleUnaryMinusExpression(variable)
+
     // x + 5
     override fun plus(other: SimpleExpression): SimpleExpression {
         return when (other) {
@@ -111,6 +115,9 @@ class SimpleVariableExpression(val variable: String) : SimpleExpression {
 }
 
 class SimpleValueExpression(val value: Long) : SimpleExpression {
+    // -5
+    override fun unaryMinus(): SimpleExpression = SimpleValueExpression(-this.value)
+
     // 5 + 7
     override fun plus(other: SimpleExpression): SimpleExpression {
         return when (other) {
@@ -209,7 +216,110 @@ class SimpleValueExpression(val value: Long) : SimpleExpression {
     }
 }
 
-class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val value: Long) : SimpleExpression {
+class SimpleUnaryMinusExpression(val variable: String) : SimpleExpression {
+    // -x + 5 == 5 - x
+    override fun plus(other: SimpleExpression): SimpleExpression {
+        return when (other) {
+            is SimpleValueExpression -> SimpleBinaryExpression(variable, SimpleOperator.MINUS, other.value, true)
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x - 5 == -5 - x
+    override fun minus(other: SimpleExpression): SimpleExpression {
+        return when (other) {
+            is SimpleValueExpression -> SimpleBinaryExpression(variable, SimpleOperator.MINUS, -other.value, true)
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -(-x)
+    override fun unaryMinus(): SimpleExpression = SimpleVariableExpression(variable)
+
+    // -x * 5
+    override fun times(other: SimpleExpression): SimpleExpression {
+        return when (other) {
+            is SimpleValueExpression -> SimpleBinaryExpression(variable, SimpleOperator.MULT, -other.value)
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x / 5
+    override fun div(other: SimpleExpression): SimpleExpression {
+        return when (other) {
+            is SimpleValueExpression -> SimpleBinaryExpression(variable, SimpleOperator.DIV, -other.value)
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x == 5
+    override fun equals(other: SimpleExpression): PointSet {
+        return when (other) {
+            is SimpleValueExpression -> Point(-other.value)
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x != 5
+    override fun notEquals(other: SimpleExpression): PointSet {
+        return when (other) {
+            is SimpleValueExpression -> Point(-other.value).complement()
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x < 5 == x > -5
+    override fun less(other: SimpleExpression): PointSet {
+        return when (other) {
+            is SimpleValueExpression -> SimpleVariableExpression(variable).greater(SimpleValueExpression(-other.value))
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x > 5 == x < -5
+    override fun greater(other: SimpleExpression): PointSet {
+        return when (other) {
+            is SimpleValueExpression -> SimpleVariableExpression(variable).less(SimpleValueExpression(-other.value))
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x <= 5 == x >= -5
+    override fun lessOrEquals(other: SimpleExpression): PointSet {
+        return when (other) {
+            is SimpleValueExpression -> SimpleVariableExpression(variable).greaterOrEquals(SimpleValueExpression(-other.value))
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+    // -x >= 5 == x <= -5
+    override fun greaterOrEquals(other: SimpleExpression): PointSet {
+        return when (other) {
+            is SimpleValueExpression -> SimpleVariableExpression(variable).lessOrEquals(SimpleValueExpression(-other.value))
+            else -> throw UnsupportedOperationException()
+        }
+    }
+
+}
+
+class SimpleBinaryExpression(val variable: String,
+                             val op: SimpleOperator,
+                             val value: Long,
+                             val reversed: Boolean = false) : SimpleExpression {
+
+    override fun unaryMinus(): SimpleExpression {
+        return when (op) {
+        // -(x + 5) == -x - 5
+            SimpleOperator.PLUS -> SimpleUnaryMinusExpression(variable).minus(SimpleValueExpression(value))
+        // -(x - 5) == -x + 5
+            SimpleOperator.MINUS -> SimpleUnaryMinusExpression(variable).plus(SimpleValueExpression(value))
+        // -(x * 5) == -x * 5
+            SimpleOperator.MULT -> SimpleUnaryMinusExpression(variable).times(SimpleValueExpression(value))
+        // -(x / 5) == -x / 5
+            SimpleOperator.DIV -> SimpleUnaryMinusExpression(variable).div(SimpleValueExpression(value))
+        }
+    }
+
     override fun plus(other: SimpleExpression): SimpleExpression {
         throw UnsupportedOperationException()
     }
@@ -226,13 +336,12 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
         throw UnsupportedOperationException()
     }
 
-    // x + 5 == 5
-    // 5 == x
+    // x + 5 == 10
     override fun equals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
-                val value = op.revert().apply(other.value, this.value)
+                val value = op.reverse().apply(other.value, this.value, reversed)
                 val valueExpression = SimpleValueExpression(value)
                 return variableExpression.equals(valueExpression)
             }
@@ -240,12 +349,12 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
         }
     }
 
-    // x != 5
+    // x + 5 != 10
     override fun notEquals(other: SimpleExpression): PointSet {
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
-                val value = op.revert().apply(other.value, this.value)
+                val value = op.reverse().apply(other.value, this.value, reversed)
                 val valueExpression = SimpleValueExpression(value)
                 return variableExpression.notEquals(valueExpression)
             }
@@ -258,7 +367,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
-                val value = op.revert().apply(other.value, this.value)
+                val value = op.reverse().apply(other.value, this.value, reversed)
                 val valueExpression = SimpleValueExpression(value)
                 return variableExpression.less(valueExpression)
             }
@@ -271,7 +380,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
-                val value = op.revert().apply(other.value, this.value)
+                val value = op.reverse().apply(other.value, this.value, reversed)
                 val valueExpression = SimpleValueExpression(value)
                 return variableExpression.greater(valueExpression)
             }
@@ -284,7 +393,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
-                val value = op.revert().apply(other.value, this.value)
+                val value = op.reverse().apply(other.value, this.value, reversed)
                 val valueExpression = SimpleValueExpression(value)
                 return variableExpression.lessOrEquals(valueExpression)
             }
@@ -297,7 +406,7 @@ class SimpleBinaryExpression(val variable: String, val op: SimpleOperator, val v
         when (other) {
             is SimpleValueExpression -> {
                 val variableExpression = SimpleVariableExpression(this.variable)
-                val value = op.revert().apply(other.value, this.value)
+                val value = op.reverse().apply(other.value, this.value, reversed)
                 val valueExpression = SimpleValueExpression(value)
                 return variableExpression.greaterOrEquals(valueExpression)
             }

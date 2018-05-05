@@ -4,7 +4,7 @@ enum class PointType {
     INCLUDE, EXCLUDE
 }
 
-fun PointType.revert(): PointType {
+fun PointType.reverse(): PointType {
     return when (this) {
         PointType.INCLUDE -> PointType.EXCLUDE
         PointType.EXCLUDE -> PointType.INCLUDE
@@ -78,16 +78,16 @@ class IntervalUnion(intervals: List<Interval>) : PointSet {
 
         val newIntervals = mutableListOf<Interval>()
         val firstStart = intervals.first().start
-        newIntervals += Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(firstStart.value, firstStart.type.revert()))
+        newIntervals += Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(firstStart.value, firstStart.type.reverse()))
 
         for (i in 0 until intervals.size - 1) {
             val start = intervals[i].end
             val end = intervals[i + 1].start
-            newIntervals += Interval.create(EndPoint(start.value, start.type.revert()), EndPoint(end.value, end.type.revert()))
+            newIntervals += Interval.create(EndPoint(start.value, start.type.reverse()), EndPoint(end.value, end.type.reverse()))
         }
 
         val lastEnd = intervals.last().end
-        newIntervals += Interval.create(EndPoint(lastEnd.value, lastEnd.type.revert()), EndPoint(Long.MAX_VALUE))
+        newIntervals += Interval.create(EndPoint(lastEnd.value, lastEnd.type.reverse()), EndPoint(Long.MAX_VALUE))
 
         return IntervalUnion(newIntervals)
     }
@@ -203,8 +203,8 @@ open class Interval protected constructor(val start: EndPoint, val end: EndPoint
         if (this.isEmpty()) return Universe
         if (this.isUniverse()) return Empty
 
-        val left = Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(this.start.value, this.start.type.revert()))
-        val right = Interval.create(EndPoint(this.end.value, this.end.type.revert()), EndPoint(Long.MAX_VALUE))
+        val left = Interval.create(EndPoint(Long.MIN_VALUE), EndPoint(this.start.value, this.start.type.reverse()))
+        val right = Interval.create(EndPoint(this.end.value, this.end.type.reverse()), EndPoint(Long.MAX_VALUE))
         return IntervalUnion(listOf(left, right))
     }
 }
